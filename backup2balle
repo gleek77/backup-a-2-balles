@@ -1,0 +1,94 @@
+
+#!/bin/bash
+
+clear
+
+###################### fonctions ######################
+backup-action-tar() {
+
+	echo "backup-action-tar"
+	tar cvf $destination/$archive_name $source  ; sync
+	echo "$success"
+	exit 0
+}
+backup-action-targz() {
+	echo "backup-action-pigz"
+	tar cvf $destination/$archive_name $source ; pigz -r -6 $destination/$archive_name ; sync 
+	echo "$succes"
+	exit 0
+}
+backup-action-ssh() {
+	echo "backup-action-ssh selectionné"
+	pv -pter -i 1 $source|pigz -6|ssh $sshuser@$sshserver dd bs=64M conv=notrunc,noerror of=/home/$sshuser/$archive_name
+	echo "$success"
+	exit 0
+}
+backup-action-dd() {
+	echo "backup-action-dd selectionné"
+	pv -pter -i 1 $source|pigz -6| dd bs=64M conv=notrunc,noerror of=$destination/$archive_name ; sync
+	echo "$succes"
+	exit 0
+}
+
+
+
+################## saisie des valeurs initiales ###############
+success="Backup terminé"
+#read -p "Enter target to save :" source
+#read -p "Enter archive file name  :" archive_name
+#read -p "tar pigz or dd ?" tool_choice
+#read -p "Enter destination directory" destination
+source=$(zenity --entry --title "drfzzz-backup" --text "Selection de la cible:" --width=400 --height=200)
+archive_name=$(zenity --entry --title "drfzzz-backup" --text "Nom de l'archive" --width=400 --height=200)
+tool_choice=$(zenity --list --width=400 --height=200 --column Selection --column outil TRUE tar FALSE pigz FALSE dd --radiolist)
+destination=$(zenity --entry --title="drfzzz-backup" --text "Selection destination" --width=400 --height=200)
+
+zenity --info --width=400 --height=200 --text "$source $archive_name $tool_choice $destination"
+
+
+
+if [ "$tool_choice" == "tar" ] ; then
+
+tool="tar"
+
+elif [ "$tool_choice" == "pigz" ] ; then
+
+tool="pigz"
+
+elif [ "$tool_choice" == "dd" ] ; then
+
+tool="dd"
+
+fi
+echo $tool
+
+ssh_backup=$(zenity --entry --width=400 --height=200 --title "drfzzz-backup" --text "sauvegarde via ssh y/n ?")
+#read -p "sauvegarde via ssh?" ssh_backup
+
+
+if [ "$ssh_backup" == "y" ] ; then
+
+sshserver=$(zenity --entry --title="drfzzz-backup" --text "entrer l'adresse du serveur" --width=400 --height=200)
+sshuser=$(zenity --entry --title "drfzzz-backup" --text "entrer le nom utilisateur" --width=400 --height=200)
+
+
+#read -p "ssh server ?" sshserver
+#read -p "sshuser ?" sshuser
+backup-action-ssh
+fi
+
+if [ "$tool" == "tar" ] ; then
+
+backup-action-tar
+
+elif [ "$tool" == "pigz" ] ; then
+
+backup-action-targz
+
+elif [ "$tool" == "dd" ] ; then
+
+backup-action-dd
+
+else
+echo "no comprendo"
+fi
